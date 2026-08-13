@@ -83,3 +83,4 @@ Run `python manage.py seed_demo_stocks` in `backend/` to load six demo stocks an
 
 Phase 4 adds broker activity and floorsheet imports.
 # Nepse
+# Nepal_Stock_exchange

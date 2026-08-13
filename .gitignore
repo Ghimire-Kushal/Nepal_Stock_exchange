@@ -1,6 +1,7 @@
-# Python
-backend/.venv/
-backend/__pycache__/
+# Python and virtual environments
+.venv/
+venv/
+__pycache__/
 **/__pycache__/
 *.py[cod]
 
@@ -9,9 +10,11 @@ backend/__pycache__/
 backend/.env
 frontend/.env
 
-# Node
-frontend/node_modules/
+# Node dependencies and generated output
+node_modules/
+**/node_modules/
 frontend/dist/
+**/dist/
 
 # Editor and OS files
 .DS_Store
