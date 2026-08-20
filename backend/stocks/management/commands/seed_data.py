@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from stocks.models import Stock, HistoricalStockPrice
 from brokers.models import Broker, FloorSheet
+from brokers.catalog import BROKERS as BROKER_CATALOG
 from portfolio.models import Portfolio, Holding
 from watchlist.models import Watchlist
 from trading.models import PaperWallet, PaperHolding, PaperTrade
@@ -23,32 +24,10 @@ class Command(BaseCommand):
             for offset in range(90,0,-1):
                 base=round(base*(1+random.uniform(-.025,.025)),2); date=today-timedelta(days=offset)
                 HistoricalStockPrice.objects.update_or_create(stock=stock,date=date,defaults={"open":base-2,"high":base+5,"low":base-6,"close":base,"volume":random.randint(10000,250000),"turnover":Decimal(str(base*random.randint(10000,250000)))})
-        broker_data = [
-            (1, "Kumari Securities Private Limited"),
-            (3, "Arun Securities (PVT) Ltd."),
-            (4, "Opal Securities Investment (PVT) Ltd."),
-            (5, "Market Securities & Exchange (PVT) Ltd."),
-            (6, "Agrawal Securities (PVT) Ltd."),
-            (7, "J.F. Securites (PVT) Ltd."),
-            (8, "Ashutosh Brokerage & Securities (PVT) Ltd."),
-            (10, "Pragyan Securities (PVT) Ltd."),
-            (11, "Malla & Malla Stock Broking Company Pvt. Limited"),
-            (13, "Thrive Brokerage House Pvt. Ltd"),
-            (14, "Nepal Stock House (PVT) Ltd."),
-            (16, "Primo Securities (PVT) Ltd."),
-            (17, "ABC Securities Private Limited"),
-            (18, "Sagarmatha Securities Private Limited"),
-            (19, "Nepal Investment And Securities Trading Private Limited"),
-            (20, "Sipla Securities Private Limited"),
-            (21, "Midas Stock Broking Company Private Limited"),
-            (22, "Siprabi Securities Pvt. Ltd."),
-            (25, "Sweta Securities Private Limited"),
-            (26, "Asian Securities Private Ltd."),
-        ]
         brokers = [Broker.objects.update_or_create(
             broker_number=number,
             defaults={"broker_name": name, "address": "Kathmandu, Nepal", "phone": "01-5550000"},
-        )[0] for number, name in broker_data]
+        )[0] for number, name in BROKER_CATALOG]
         for i in range(600):
             st=random.choice(stocks); qty=random.choice([10,20,50,100,250,500,1000]); rate=st.current_price+Decimal(str(random.randint(-10,10))); date=today-timedelta(days=random.randint(0,89)); FloorSheet.objects.get_or_create(contract_number=f"DEMO{today:%Y%m%d}{i:05d}",defaults={"stock":st,"buyer_broker":random.choice(brokers),"seller_broker":random.choice(brokers),"quantity":qty,"rate":rate,"amount":qty*rate,"trade_date":date})
         user,_=get_user_model().objects.get_or_create(username="demo",defaults={"email":"demo@example.com","first_name":"Demo","last_name":"Investor"}); user.set_password("demo12345"); user.save()

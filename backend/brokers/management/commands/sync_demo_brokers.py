@@ -2,20 +2,7 @@
 from django.core.management.base import BaseCommand
 
 from brokers.models import Broker, FloorSheet
-
-
-BROKERS = [
-    (1, "Kumari Securities Private Limited"), (3, "Arun Securities (PVT) Ltd."),
-    (4, "Opal Securities Investment (PVT) Ltd."), (5, "Market Securities & Exchange (PVT) Ltd."),
-    (6, "Agrawal Securities (PVT) Ltd."), (7, "J.F. Securites (PVT) Ltd."),
-    (8, "Ashutosh Brokerage & Securities (PVT) Ltd."), (10, "Pragyan Securities (PVT) Ltd."),
-    (11, "Malla & Malla Stock Broking Company Pvt. Limited"), (13, "Thrive Brokerage House Pvt. Ltd"),
-    (14, "Nepal Stock House (PVT) Ltd."), (16, "Primo Securities (PVT) Ltd."),
-    (17, "ABC Securities Private Limited"), (18, "Sagarmatha Securities Private Limited"),
-    (19, "Nepal Investment And Securities Trading Private Limited"), (20, "Sipla Securities Private Limited"),
-    (21, "Midas Stock Broking Company Private Limited"), (22, "Siprabi Securities Pvt. Ltd."),
-    (25, "Sweta Securities Private Limited"), (26, "Asian Securities Private Ltd."),
-]
+from brokers.catalog import BROKERS
 
 
 class Command(BaseCommand):

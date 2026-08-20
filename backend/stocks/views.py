@@ -2,7 +2,12 @@ from datetime import timedelta
 
 from django.db.models import Q, Sum, F, DecimalField, ExpressionWrapper
 from django.utils import timezone
-from rest_framework import generics
+import csv
+from decimal import Decimal, InvalidOperation
+
+from django.db import transaction
+from rest_framework import generics, permissions, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -13,9 +18,15 @@ from brokers.models import FloorSheet
 from analytics.services import indicators
 
 
+class StockPagination(PageNumberPagination):
+    page_size = 500
+    max_page_size = 500
+
+
 class StockListView(generics.ListAPIView):
     permission_classes = (AllowAny,)
     serializer_class = StockSerializer
+    pagination_class = StockPagination
 
     def get_queryset(self):
         query = self.request.query_params.get("search", "").strip()
@@ -82,3 +93,41 @@ def broker_analysis(request, symbol):
 def technical_analysis(request, symbol):
     stock = generics.get_object_or_404(Stock, symbol=symbol.upper())
     return Response(indicators(stock))
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAdminUser])
+def import_companies(request):
+    """Import a CSV exported from NEPSE's Listed Securities page.
+
+    Required fields: symbol and name/company_name. Sector is optional.
+    Existing market values are preserved so this only enriches the master list.
+    """
+    uploaded = request.FILES.get("file")
+    if not uploaded or uploaded.size > 5 * 1024 * 1024:
+        return Response({"error": "Upload a CSV file no larger than 5 MB."}, status=400)
+    try:
+        rows = list(csv.DictReader(uploaded.read().decode("utf-8-sig").splitlines()))
+    except UnicodeDecodeError:
+        return Response({"error": "CSV must be UTF-8 encoded."}, status=400)
+    if not rows:
+        return Response({"error": "The CSV is empty."}, status=400)
+
+    normalized = [{str(key).strip().lower(): (value or "").strip() for key, value in row.items()} for row in rows]
+    if not all(row.get("symbol") and (row.get("name") or row.get("company_name")) for row in normalized):
+        return Response({"error": "CSV requires symbol plus name or company_name columns."}, status=400)
+
+    created = updated = 0
+    with transaction.atomic():
+        for row in normalized:
+            symbol = row["symbol"].upper()
+            defaults = {"company_name": row.get("name") or row.get("company_name"), "sector": row.get("sector") or "Unclassified"}
+            stock = Stock.objects.filter(symbol=symbol).first()
+            if stock:
+                stock.company_name, stock.sector = defaults["company_name"], defaults["sector"]
+                stock.save(update_fields=("company_name", "sector", "updated_at"))
+                updated += 1
+            else:
+                Stock.objects.create(symbol=symbol, current_price=Decimal("0"), previous_close=Decimal("0"), open_price=Decimal("0"), high_price=Decimal("0"), low_price=Decimal("0"), **defaults)
+                created += 1
+    return Response({"created": created, "updated": updated}, status=status.HTTP_201_CREATED)

@@ -14,3 +14,4 @@ class StockAdmin(admin.ModelAdmin):
     search_fields = ("symbol", "company_name", "sector")
     list_filter = ("sector",)
     inlines = (HistoricalStockPriceInline,)
+    actions = ()

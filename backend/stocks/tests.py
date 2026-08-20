@@ -1,4 +1,5 @@
 from django.core.management import call_command
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -23,3 +24,17 @@ class StockApiTests(TestCase):
     def test_rejects_unknown_history_ranges(self):
         response = self.client.get(reverse("stock-history", kwargs={"symbol": "NABIL"}), {"range": "FOREVER"})
         self.assertEqual(response.status_code, 400)
+
+    def test_company_import_is_admin_only_and_adds_stock(self):
+        response = self.client.post(reverse("import-companies"), {})
+        self.assertEqual(response.status_code, 401)
+
+        admin = get_user_model().objects.create_superuser("admin", "admin@example.com", "safe-password-123")
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_file = SimpleUploadedFile("nepse-companies.csv", b"symbol,name,sector\nTEST,Test Company Limited,Finance\n", content_type="text/csv")
+        response = client.post(reverse("import-companies"), {"file": csv_file})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["created"], 1)
