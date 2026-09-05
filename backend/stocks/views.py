@@ -45,6 +45,9 @@ class StockDetailView(generics.RetrieveAPIView):
     queryset = Stock.objects.all()
     lookup_field = "symbol"
 
+    def get_object(self):
+        return generics.get_object_or_404(self.get_queryset(), symbol__iexact=self.kwargs["symbol"])
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])

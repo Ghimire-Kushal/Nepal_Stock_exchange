@@ -1,7 +1,8 @@
 import csv
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
 from django.utils.dateparse import parse_date
+from django.db import transaction
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -67,10 +68,16 @@ def import_floorsheet(request):
     required = {"contract_number", "symbol", "buyer_broker", "seller_broker", "quantity", "rate", "amount", "trade_date"}
     if not rows or not required.issubset(rows[0]): return Response({"error": "CSV columns are invalid."}, status=400)
     created = 0
-    for row in rows:
-        if FloorSheet.objects.filter(contract_number=row["contract_number"]).exists(): continue
-        try:
-            stock = Stock.objects.get(symbol=row["symbol"].upper()); buyer = Broker.objects.get(broker_number=row["buyer_broker"]); seller = Broker.objects.get(broker_number=row["seller_broker"])
-            FloorSheet.objects.create(contract_number=row["contract_number"], stock=stock, buyer_broker=buyer, seller_broker=seller, quantity=int(row["quantity"]), rate=Decimal(row["rate"]), amount=Decimal(row["amount"]), trade_date=parse_date(row["trade_date"])); created += 1
-        except (Stock.DoesNotExist, Broker.DoesNotExist, ValueError, TypeError): return Response({"error": f"Invalid row for contract {row.get('contract_number')}"}, status=400)
+    try:
+        with transaction.atomic():
+            for row in rows:
+                if FloorSheet.objects.filter(contract_number=row["contract_number"]).exists(): continue
+                trade_date = parse_date(row["trade_date"])
+                if not trade_date: raise ValueError("invalid date")
+                stock = Stock.objects.get(symbol=row["symbol"].upper()); buyer = Broker.objects.get(broker_number=row["buyer_broker"]); seller = Broker.objects.get(broker_number=row["seller_broker"])
+                quantity, rate, amount = int(row["quantity"]), Decimal(row["rate"]), Decimal(row["amount"])
+                if quantity <= 0 or rate <= 0 or amount <= 0: raise ValueError("non-positive values")
+                FloorSheet.objects.create(contract_number=row["contract_number"], stock=stock, buyer_broker=buyer, seller_broker=seller, quantity=quantity, rate=rate, amount=amount, trade_date=trade_date); created += 1
+    except (Stock.DoesNotExist, Broker.DoesNotExist, ValueError, TypeError, InvalidOperation):
+        return Response({"error": f"Invalid row for contract {row.get('contract_number')}"}, status=400)
     return Response({"created": created, "skipped_duplicates": len(rows)-created}, status=status.HTTP_201_CREATED)

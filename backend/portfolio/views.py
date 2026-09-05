@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from .models import Portfolio, Holding
 from .serializers import PortfolioSerializer, HoldingSerializer
@@ -15,7 +16,8 @@ class HoldingDetail(generics.RetrieveUpdateDestroyAPIView):
 class HoldingCreate(generics.CreateAPIView):
     serializer_class = HoldingSerializer; permission_classes = (permissions.IsAuthenticated,)
     def perform_create(self, serializer):
-        portfolio = Portfolio.objects.get(pk=self.kwargs["portfolio_id"], user=self.request.user); serializer.save(portfolio=portfolio)
+        portfolio = get_object_or_404(Portfolio, pk=self.kwargs["portfolio_id"], user=self.request.user)
+        serializer.save(portfolio=portfolio)
 class PortfolioSummary(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     def get(self, request):

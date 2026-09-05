@@ -23,3 +23,4 @@ export const brokersApi = () => api.get('/brokers/')
 export const brokerActivityApi = (number) => api.get(`/brokers/${number}/activity/`)
 
 export default api
+export { api }
